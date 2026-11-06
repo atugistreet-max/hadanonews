@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ニュースダイジェスト統合版アーカイブ</title>
+
+  <!-- Google tag (gtag.js) - 健康管理アプリと同じGA4測定ID -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZKVVRD15VN"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    const GA_MEASUREMENT_ID = 'G-ZKVVRD15VN';
+    gtag('config', GA_MEASUREMENT_ID, {
+      'app_name': 'ニュースダイジェスト統合版アーカイブ'
+    });
+  </script>
+
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #f8fafc;
+    }
+    .card-hover {
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+    }
+  </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+  <!-- ヘッダー -->
+  <header class="bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-md sticky top-0 z-20">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+          <span>📰</span> ニュースダイジェスト統合版アーカイブ
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-300 mt-0.5">暮らし・制度・お金・地域の重要情報まとめ</p>
+      </div>
+      <div class="flex items-center gap-2 self-end sm:self-auto">
+        <span id="status-indicator" class="text-xs bg-slate-700 text-slate-200 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          データ同期中...
+        </span>
+        <button id="refresh-btn" onclick="fetchSheetData()" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+          🔄 最新読込
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="max-w-5xl w-full mx-auto px-4 py-6 flex-1">
+
+    <!-- 検索・フィルターパネル -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+        
+        <!-- キーワード検索 -->
+        <div class="md:col-span-5">
+          <label for="search-input" class="block text-xs font-bold text-slate-600 mb-1">🔍 キーワード検索（見出し・要点・期限）</label>
+          <div class="relative">
+            <input type="text" id="search-input" placeholder="例：介護、金利、秦野市、遺言..." 
+              class="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <button id="clear-search" onclick="clearSearch()" class="hidden absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-sm">✕</button>
+          </div>
+        </div>
+
+        <!-- カテゴリ絞り込み -->
+        <div class="md:col-span-3">
+          <label for="category-select" class="block text-xs font-bold text-slate-600 mb-1">🏷️ カテゴリ（項目）</label>
+          <select id="category-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">すべての項目</option>
+          </select>
+        </div>
+
+        <!-- 日付絞り込み -->
+        <div class="md:col-span-2">
+          <label for="date-input" class="block text-xs font-bold text-slate-600 mb-1">📅 日付指定</label>
+          <input type="date" id="date-input" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <!-- 並び替え・リセット -->
+        <div class="md:col-span-2 flex flex-col justify-end">
+          <div class="flex gap-1.5">
+            <select id="sort-select" aria-label="並び替え" class="w-full px-2 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="desc">新しい順</option>
+              <option value="asc">古い順</option>
+            </select>
+            <button onclick="resetFilters()" title="条件をリセット" class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium whitespace-nowrap transition">
+              リセット
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- カテゴリ クイック選択ボタン -->
+      <div id="category-pills" class="flex flex-wrap gap-1.5 mt-4 pt-3 border-t border-slate-100"></div>
+    </section>
+
+    <!-- 件数・表示切替バー -->
+    <div class="flex items-center justify-between mb-4 px-1">
+      <div class="text-sm text-slate-600">
+        表示件数: <span id="result-count" class="font-bold text-slate-900 text-base">0</span> 件
+        <span id="total-count" class="text-xs text-slate-400"></span>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="setViewMode('card')" id="view-card-btn" class="text-xs px-2.5 py-1 rounded bg-blue-600 text-white font-medium">カード表示</button>
+        <button onclick="setViewMode('table')" id="view-table-btn" class="text-xs px-2.5 py-1 rounded bg-slate-200 text-slate-700 font-medium">一覧表</button>
+      </div>
+    </div>
+
+    <!-- コンテンツ表示エリア（カード） -->
+    <div id="news-container-card" class="grid grid-cols-1 gap-4"></div>
+
+    <!-- コンテンツ表示エリア（テーブル） -->
+    <div id="news-container-table" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm">
+        <thead>
+          <tr class="bg-slate-100 text-slate-700 border-b border-slate-200 text-xs">
+            <th class="py-3 px-4 whitespace-nowrap">日付</th>
+            <th class="py-3 px-4 whitespace-nowrap">カテゴリ</th>
+            <th class="py-3 px-4 min-w-[200px]">見出し</th>
+            <th class="py-3 px-4 min-w-[300px]">要点</th>
+            <th class="py-3 px-4 whitespace-nowrap">関連日・期限</th>
+          </tr>
+        </thead>
+        <tbody id="news-table-body" class="divide-y divide-slate-200"></tbody>
+      </table>
+    </div>
+
+    <!-- 検索結果ゼロの表示 -->
+    <div id="empty-state" class="hidden bg-white rounded-xl border border-slate-200 p-10 text-center my-4">
+      <p class="text-slate-500 font-medium">条件に一致するニュースが見つかりませんでした。</p>
+      <button onclick="resetFilters()" class="mt-3 text-sm text-blue-600 hover:underline font-medium">検索条件をすべて解除する</button>
+    </div>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 mt-12 py-4 text-center text-xs text-slate-400">
+    ニュースダイジェスト統合版アーカイブ
+  </footer>
+
+  <script>
+    const SHEET_GVIZ_URL = 'https://docs.google.com/spreadsheets/d/1RlQGGXyiHfCx-i6T6tddbpHFd2Pn4EzLY32-RnN1bNM/gviz/tq?tqx=out:json';
+
+    // 初期バックアップデータ
+    const FALLBACK_DATA = [
+      {
+        date: "2026/11/06",
+        category: "介護・医療の制度",
+        title: "厚労省「第274回 介護給付費分科会」が本日開催",
+        summary: "令和9年度介護報酬改定に向け、介護現場のカスハラ対策や虐待・事故防止の基準を審議。利用者側のサービス基準に関わる話。",
+        deadline: "2026/11/06 開催"
+      },
+      {
+        date: "2026/11/06",
+        category: "お金・家計",
+        title: "ゆうちょ銀行の貯金金利引き上げ",
+        summary: "メガバンクは11/2に普通預金0.5%・定期0.7%へ引き上げ済み。低金利口座に置いたままにせず、定期性貯金・個人向け国債・新NISAへの振り分けが元記事の提案。",
+        deadline: "2026/11/09 実施"
+      },
+      {
+        date: "2026/11/06",
+        category: "秦野市の動き",
+        title: "「プロから学ぶ空き家対策」セミナー告知（市後援）",
+        summary: "相続登記は3年以内が義務。管理不全空き家になると固定資産税の特例が外れて最大6倍に。生前の整理や売却の相談ができる。本日付タウンニュース秦野版で告知。",
+        deadline: ""
+      },
+      {
+        date: "2026/11/06",
+        category: "秦野市の動き",
+        title: "介護家族のサポート事業（市保健福祉センター）",
+        summary: "認知症家族交流会「秦野のつどい」や、紙おむつ等の介護用品の支給助成あり。窓口は高齢介護課と地域高齢者支援センター。",
+        deadline: ""
+      },
+      {
+        date: "2026/11/06",
+        category: "終活・法律",
+        title: "自筆遺言の「花押」は無効（最高裁判例）",
+        summary: "署名代わりのサイン（花押）は民法968条の「押印」にあたらず、遺言全体が無効になり得る。押印は印章で（認印・拇印は可）。確実にするなら公正証書遺言が安全。",
+        deadline: ""
+      }
+    ];
+
+    let allNews = [];
+    let currentViewMode = 'card';
+
+    function getCategoryStyle(category) {
+      const styles = {
+        '介護・医療の制度': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        'お金・家計': 'bg-amber-50 text-amber-700 border-amber-200',
+        '秦野市の動き': 'bg-blue-50 text-blue-700 border-blue-200',
+        '終活・法律': 'bg-purple-50 text-purple-700 border-purple-200'
+      };
+      return styles[category] || 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+
+    function fetchSheetData() {
+      const statusEl = document.getElementById('status-indicator');
+      statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span> 読込中...`;
+
+      window.google = window.google || {};
+      window.google.visualization = window.google.visualization || {};
+      window.google.visualization.Query = {
+        setResponse: function(response) {
+          try {
+            if (response && response.table && response.table.rows) {
+              const parsed = response.table.rows.map(row => {
+                const c = row.c || [];
+                const getVal = (idx) => (c[idx] ? (c[idx].f || c[idx].v || '') : '').toString().trim();
+                return {
+                  date: getVal(0),
+                  category: getVal(1),
+                  title: getVal(2),
+                  summary: getVal(3),
+                  deadline: getVal(4)
+                };
+              }).filter(item => item.title && item.date !== '日付');
+
+              if (parsed.length > 0) {
+                allNews = parsed;
+                statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span> スプレッドシート同期済`;
+                initUI();
+                return;
+              }
+            }
+          } catch (e) {
+            console.warn('Parse error:', e);
+          }
+          useFallbackData();
+        }
+      };
+
+      const oldScript = document.getElementById('gviz-script');
+      if (oldScript) oldScript.remove();
+
+      const script = document.createElement('script');
+      script.id = 'gviz-script';
+      script.src = SHEET_GVIZ_URL + '&_t=' + Date.now();
+      script.onerror = function() {
+        useFallbackData();
+      };
+      document.body.appendChild(script);
+    }
+
+    function useFallbackData() {
+      allNews = [...FALLBACK_DATA];
+      const statusEl = document.getElementById('status-indicator');
+      statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-400"></span> アーカイブ表示中`;
+      initUI();
+    }
+
+    function initUI() {
+      const categories = [...new Set(allNews.map(item => item.category).filter(Boolean))];
+      const selectEl = document.getElementById('category-select');
+      const currentVal = selectEl.value;
+
+      selectEl.innerHTML = '<option value="ALL">すべての項目</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        selectEl.appendChild(opt);
+      });
+      if (categories.includes(currentVal)) selectEl.value = currentVal;
+
+      const pillsContainer = document.getElementById('category-pills');
+      pillsContainer.innerHTML = '';
+      pillsContainer.appendChild(createPillButton('すべて', 'ALL'));
+      categories.forEach(cat => {
+        pillsContainer.appendChild(createPillButton(cat, cat));
+      });
+
+      renderNews();
+    }
+
+    function createPillButton(label, value) {
+      const btn = document.createElement('button');
+      const isSelected = document.getElementById('category-select').value === value;
+      btn.className = `text-xs px-3 py-1 rounded-full border transition font-medium ${
+        isSelected 
+          ? 'bg-slate-800 text-white border-slate-800' 
+          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+      }`;
+      btn.textContent = label;
+      btn.onclick = () => {
+        document.getElementById('category-select').value = value;
+        trackGAEvent('filter_category', { category: value });
+        initUI();
+      };
+      return btn;
+    }
+
+    function normalizeDate(str) {
+      if (!str) return '';
+      return str.replace(/-/g, '/').trim();
+    }
+
+    function renderNews() {
+      const keyword = document.getElementById('search-input').value.trim().toLowerCase();
+      const selectedCat = document.getElementById('category-select').value;
+      const selectedDate = normalizeDate(document.getElementById('date-input').value);
+      const sortOrder = document.getElementById('sort-select').value;
+
+      document.getElementById('clear-search').classList.toggle('hidden', !keyword);
+
+      let filtered = allNews.filter(item => {
+        const matchKeyword = !keyword || 
+          item.title.toLowerCase().includes(keyword) ||
+          item.summary.toLowerCase().includes(keyword) ||
+          item.category.toLowerCase().includes(keyword) ||
+          item.deadline.toLowerCase().includes(keyword);
+
+        const matchCat = selectedCat === 'ALL' || item.category === selectedCat;
+        const matchDate = !selectedDate || normalizeDate(item.date) === selectedDate;
+
+        return matchKeyword && matchCat && matchDate;
+      });
+
+      filtered.sort((a, b) => {
+        const dateA = normalizeDate(a.date);
+        const dateB = normalizeDate(b.date);
+        return sortOrder === 'desc' ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
+      });
+
+      document.getElementById('result-count').textContent = filtered.length;
+      document.getElementById('total-count').textContent = `（全 ${allNews.length} 件中）`;
+
+      const cardContainer = document.getElementById('news-container-card');
+      const tableBody = document.getElementById('news-table-body');
+      const emptyState = document.getElementById('empty-state');
+
+      cardContainer.innerHTML = '';
+      tableBody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      filtered.forEach(item => {
+        const badgeStyle = getCategoryStyle(item.category);
+
+        const card = document.createElement('article');
+        card.className = 'bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5 card-hover';
+        card.innerHTML = `
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded">📅 ${escapeHtml(item.date)}</span>
+              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full border ${badgeStyle}">${escapeHtml(item.category)}</span>
+            </div>
+            ${item.deadline ? `<span class="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">⏰ 関連日・期限: ${escapeHtml(item.deadline)}</span>` : ''}
+          </div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 mb-2 leading-snug">${highlightText(item.title, keyword)}</h2>
+          <p class="text-sm text-slate-700 leading-relaxed">${highlightText(item.summary, keyword)}</p>
+        `;
+        cardContainer.appendChild(card);
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+        tr.innerHTML = `
+          <td class="py-3 px-4 whitespace-nowrap text-slate-600 font-medium">${escapeHtml(item.date)}</td>
+          <td class="py-3 px-4 whitespace-nowrap">
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full border ${badgeStyle}">${escapeHtml(item.category)}</span>
+          </td>
+          <td class="py-3 px-4 font-bold text-slate-900">${highlightText(item.title, keyword)}</td>
+          <td class="py-3 px-4 text-slate-700 leading-relaxed">${highlightText(item.summary, keyword)}</td>
+          <td class="py-3 px-4 whitespace-nowrap">
+            ${item.deadline ? `<span class="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">${escapeHtml(item.deadline)}</span>` : '<span class="text-slate-300">-</span>'}
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function highlightText(text, keyword) {
+      const safeText = escapeHtml(text);
+      if (!keyword) return safeText;
+      const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return safeText.replace(regex, '<mark class="bg-yellow-200 text-slate-900 rounded px-0.5">$1</mark>');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      document.getElementById('news-container-card').classList.toggle('hidden', mode !== 'card');
+      document.getElementById('news-container-table').classList.toggle('hidden', mode !== 'table');
+      
+      document.getElementById('view-card-btn').className = mode === 'card'
+        ? 'text-xs px-2.5 py-1 rounded bg-blue-600 text-white font-medium'
+        : 'text-xs px-2.5 py-1 rounded bg-slate-200 text-slate-700 font-medium';
+      document.getElementById('view-table-btn').className = mode === 'table'
+        ? 'text-xs px-2.5 py-1 rounded bg-blue-600 text-white font-medium'
+        : 'text-xs px-2.5 py-1 rounded bg-slate-200 text-slate-700 font-medium';
+
+      trackGAEvent('change_view_mode', { view_mode: mode });
+    }
+
+    function clearSearch() {
+      document.getElementById('search-input').value = '';
+      renderNews();
+    }
+
+    function resetFilters() {
+      document.getElementById('search-input').value = '';
+      document.getElementById('category-select').value = 'ALL';
+      document.getElementById('date-input').value = '';
+      document.getElementById('sort-select').value = 'desc';
+      initUI();
+    }
+
+    function trackGAEvent(eventName, params) {
+      if (typeof gtag === 'function') {
+        gtag('event', eventName, params);
+      }
+    }
+
+    document.getElementById('search-input').addEventListener('input', renderNews);
+    document.getElementById('category-select').addEventListener('change', (e) => {
+      trackGAEvent('filter_category', { category: e.target.value });
+      initUI();
+    });
+    document.getElementById('date-input').addEventListener('change', (e) => {
+      trackGAEvent('filter_date', { date: e.target.value });
+      renderNews();
+    });
+    document.getElementById('sort-select').addEventListener('change', renderNews);
+
+    fetchSheetData();
+  </script>
+</body>
+</html>
